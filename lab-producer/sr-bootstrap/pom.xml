@@ -1,0 +1,76 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Build-only helper (NOT an app, NOT a reactor module of lab-producer). Its single job is to
+  resolve io.confluent:kafka-schema-registry's OWN transitive dependency set - using Confluent's
+  declared versions, free of Spring Boot's dependencyManagement - and copy them into
+  ../target/schema-registry. lab-producer's tests then launch the registry from that clean
+  classpath as a separate process pointed at the embedded KRaft broker (Task 3.2).
+
+  Resolving through the parent pom would force Jersey 4 / jakarta.ws.rs and drop Confluent's
+  javax.ws.rs + rest-utils jars, so this helper deliberately has NO parent.
+-->
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+    <groupId>com.example.lab</groupId>
+    <artifactId>lab-sr-bootstrap</artifactId>
+    <version>0.0.1-SNAPSHOT</version>
+    <packaging>pom</packaging>
+
+    <repositories>
+        <repository>
+            <id>confluent</id>
+            <url>https://packages.confluent.io/maven/</url>
+        </repository>
+    </repositories>
+
+    <dependencies>
+        <dependency>
+            <groupId>io.confluent</groupId>
+            <artifactId>kafka-schema-registry</artifactId>
+            <version>7.9.0</version>
+        </dependency>
+        <!-- align jackson-core with the 2.16.x databind/annotations Confluent pulls in;
+             without this, mediation leaves core at 2.14.3 (missing StreamConstraintsException) -->
+        <dependency>
+            <groupId>com.fasterxml.jackson.core</groupId>
+            <artifactId>jackson-core</artifactId>
+            <version>2.16.0</version>
+        </dependency>
+    </dependencies>
+
+    <build>
+        <plugins>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-dependency-plugin</artifactId>
+                <executions>
+                    <execution>
+                        <id>copy-schema-registry-classpath</id>
+                        <phase>process-test-resources</phase>
+                        <goals>
+                            <!-- SR's transitive runtime deps -->
+                            <goal>copy-dependencies</goal>
+                            <!-- plus the SR server jar itself (copy-dependencies omits it) -->
+                            <goal>copy</goal>
+                        </goals>
+                        <configuration>
+                            <outputDirectory>${project.basedir}/../target/schema-registry</outputDirectory>
+                            <includeScope>runtime</includeScope>
+                            <stripVersion>false</stripVersion>
+                            <artifactItems>
+                                <artifactItem>
+                                    <groupId>io.confluent</groupId>
+                                    <artifactId>kafka-schema-registry</artifactId>
+                                    <version>7.9.0</version>
+                                    <type>jar</type>
+                                </artifactItem>
+                            </artifactItems>
+                        </configuration>
+                    </execution>
+                </executions>
+            </plugin>
+        </plugins>
+    </build>
+</project>

@@ -1,0 +1,12 @@
+{
+  "type": "record",
+  "name": "OrderEvent",
+  "namespace": "com.example.lab.consumer",
+  "fields": [
+    {"name": "orderId", "type": "string"},
+    {"name": "customer", "type": "string"},
+    {"name": "amount", "type": "double"},
+    {"name": "discount", "type": "double", "default": 0.0},
+    {"name": "phoneNumber", "type": "string", "default": "123-456-7890"}
+  ]
+}

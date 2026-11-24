@@ -1,0 +1,20 @@
+# Maven build output
+target/
+*.class
+
+# IDE files
+.idea/
+*.iml
+*.ipr
+*.iws
+.vscode/
+.project
+.classpath
+.settings/
+
+# Build/test scratch output (not source)
+.research/
+
+# Logs / OS noise
+*.log
+.DS_Store

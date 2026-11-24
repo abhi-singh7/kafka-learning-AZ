@@ -1,0 +1,140 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <parent>
+        <groupId>org.springframework.boot</groupId>
+        <artifactId>spring-boot-starter-parent</artifactId>
+        <version>4.1.2</version>
+        <relativePath/>
+    </parent>
+
+    <groupId>com.example.lab</groupId>
+    <artifactId>lab-producer</artifactId>
+    <version>0.0.1-SNAPSHOT</version>
+    <name>lab-producer</name>
+    <description>Kafka learning pair - push side (REST in, Kafka out) on :8091</description>
+
+    <repositories>
+        <!-- Confluent artifacts for the AVRO lane (Task 3.2). -->
+        <repository>
+            <id>confluent</id>
+            <url>https://packages.confluent.io/maven/</url>
+        </repository>
+    </repositories>
+
+    <properties>
+        <javaVersion>25</javaVersion>
+        <maven.compiler.source>25</maven.compiler.source>
+        <maven.compiler.target>25</maven.compiler.target>
+        <maven.compiler.release></maven.compiler.release>
+        <kafka.version>4.1.2</kafka.version>
+    </properties>
+
+    <dependencies>
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-kafka</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-web</artifactId>
+        </dependency>
+        <!-- Async PoS lane: a Web route returns the CompletableFuture from KafkaTemplate#send. -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-webflux</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-micrometer-metrics</artifactId>
+        </dependency>
+        <!-- Kafka Streams lane (Task 3.1 / A17): the kafka-streams jar is an OPTIONAL
+             dependency of spring-kafka and is NOT pulled in transitively (verified in
+             the Spring Kafka Streams reference page - "This library also has a hard
+             dependency on Apache Kafka, via Kafka Java driver"), so it is declared here. -->
+        <dependency>
+            <groupId>org.apache.kafka</groupId>
+            <artifactId>kafka-streams</artifactId>
+            <version>4.1.2</version>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-test</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-webmvc-test</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.kafka</groupId>
+            <artifactId>spring-kafka-test</artifactId>
+            <version>4.1.2</version>
+            <scope>test</scope>
+        </dependency>
+        <!-- AVRO lane (Task 3.2): serializer/deserializer + Avro runtime. -->
+        <dependency>
+            <groupId>io.confluent</groupId>
+            <artifactId>kafka-avro-serializer</artifactId>
+            <version>7.9.0</version>
+        </dependency>
+        <dependency>
+            <groupId>org.apache.avro</groupId>
+            <artifactId>avro</artifactId>
+            <version>1.11.4</version>
+        </dependency>
+    </dependencies>
+
+    <build>
+        <!-- AVRO lane (Task 3.2): put src/main/avro on the classpath so OrderEvent.avsc is
+             loadable at /com/example/lab/producer/OrderEvent.avsc (mirrors the sibling layout). -->
+        <resources>
+            <resource>
+                <directory>src/main/resources</directory>
+            </resource>
+            <resource>
+                <directory>src/main/avro</directory>
+            </resource>
+        </resources>
+        <plugins>
+            <plugin>
+                <groupId>org.springframework.boot</groupId>
+                <artifactId>spring-boot-maven-plugin</artifactId>
+            </plugin>
+            <!-- Task 3.2: materialise the Confluent Schema Registry's OWN runtime classpath
+                 (Confluent's declared versions, NOT Spring Boot-managed ones) into
+                 target/schema-registry so tests can launch it as a SEPARATE process pointed at
+                 the embedded broker. Resolving through this project's BOM would force Jersey 4/
+                 jakarta.ws.rs and drop Confluent's javax.ws.rs / rest-utils jars, so we resolve
+                 in isolation via a tiny parent-less helper pom (sr-bootstrap/pom.xml). -->
+            <plugin>
+                <groupId>org.codehaus.mojo</groupId>
+                <artifactId>exec-maven-plugin</artifactId>
+                <version>3.5.0</version>
+                <executions>
+                    <execution>
+                        <id>build-schema-registry-classpath</id>
+                        <phase>process-test-resources</phase>
+                        <goals>
+                            <goal>exec</goal>
+                        </goals>
+                        <configuration>
+                            <executable>mvn</executable>
+                            <arguments>
+                                <argument>-f</argument>
+                                <argument>${project.basedir}/sr-bootstrap/pom.xml</argument>
+                                <argument>-B</argument>
+                                <argument>-q</argument>
+                                <argument>process-test-resources</argument>
+                            </arguments>
+                        </configuration>
+                    </execution>
+                </executions>
+            </plugin>
+        </plugins>
+    </build>
+</project>
